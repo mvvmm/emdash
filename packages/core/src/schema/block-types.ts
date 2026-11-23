@@ -20,6 +20,7 @@ export type BlockFieldType = (typeof BLOCK_FIELD_TYPES)[number];
 export type BlockTypeSource = "user" | "seed";
 
 export interface BlockFieldOptions {
+	/** `image` and `portableText` fields: offer a dark color scheme variant for each image. */
 	darkVariant?: boolean;
 }
 

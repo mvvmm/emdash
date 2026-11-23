@@ -39,6 +39,36 @@ describe("validateSeed", () => {
 		});
 	});
 
+	describe("block type validation", () => {
+		const blockTypeSeed = (field: Record<string, unknown>): unknown => ({
+			version: "1",
+			blockTypes: [
+				{
+					slug: "rich_text",
+					label: "Rich text",
+					currentVersion: 1,
+					versions: [{ version: 1, fields: [{ slug: "body", label: "Body", ...field }] }],
+				},
+			],
+		});
+
+		it("accepts a dark variant on a rich text block field", () => {
+			const result = validateSeed(
+				blockTypeSeed({ type: "portableText", options: { darkVariant: true } }),
+			);
+			expect(result.errors).toEqual([]);
+			expect(result.valid).toBe(true);
+		});
+
+		it("rejects a dark variant on a block field that cannot hold images", () => {
+			const result = validateSeed(blockTypeSeed({ type: "text", options: { darkVariant: true } }));
+			expect(result.valid).toBe(false);
+			expect(result.errors).toEqual([
+				expect.stringContaining("blockTypes[0].versions[0].fields[0].options"),
+			]);
+		});
+	});
+
 	describe("defaultLocale validation", () => {
 		it("should accept an omitted defaultLocale", () => {
 			const result = validateSeed({ version: "1" });

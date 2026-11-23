@@ -239,7 +239,7 @@ export function validateBlockFields(
 			fail(`${path}.defaultValue`, "must be a JSON value");
 		}
 		if (field.options !== undefined) {
-			if (field.type !== "image")
+			if (field.type !== "image" && field.type !== "portableText")
 				fail(`${path}.options`, `is not supported for type "${field.type}"`);
 			for (const key of Object.keys(field.options)) {
 				if (key !== "darkVariant") fail(`${path}.options.${key}`, "is not a supported option");

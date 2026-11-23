@@ -3020,6 +3020,8 @@ export function ContentEditor({
 												// the new translation on the next edit.
 												const fieldKey = `${name}:${item?.id ?? "new"}:${fieldsGeneration}:${fieldGenerations[name] ?? 0}`;
 												const isDocumentBody = field.kind === "portableText" && name === "content";
+												const hostsRichText =
+													field.kind === "portableText" || field.kind === "blocks";
 												const fieldProps: Omit<FieldRendererProps, "value"> = {
 													name,
 													field,
@@ -3032,10 +3034,8 @@ export function ContentEditor({
 													onArrowUpAtStart:
 														isDocumentBody && hasDocumentTitle ? focusDocumentTitle : undefined,
 													pluginBlocks,
-													onBlockSidebarOpen:
-														field.kind === "portableText" ? handleBlockSidebarOpen : undefined,
-													onBlockSidebarClose:
-														field.kind === "portableText" ? handleBlockSidebarClose : undefined,
+													onBlockSidebarOpen: hostsRichText ? handleBlockSidebarOpen : undefined,
+													onBlockSidebarClose: hostsRichText ? handleBlockSidebarClose : undefined,
 													manifest,
 													readOnly,
 													timezone,

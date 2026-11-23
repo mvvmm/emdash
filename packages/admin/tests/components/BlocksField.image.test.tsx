@@ -321,3 +321,49 @@ describe("An image inside a block", () => {
 		await expect.poll(() => opacityOf(remove)).toBe(1);
 	});
 });
+
+describe("An image in a block's rich text", () => {
+	const richText = (darkVariant: boolean) =>
+		blockType("rich_text", "Rich text", [
+			{
+				slug: "body",
+				label: "Body",
+				type: "portableText",
+				...(darkVariant ? { options: { darkVariant: true } } : {}),
+			},
+		]);
+	const richTextBlock = {
+		_type: "rich_text",
+		_version: 1,
+		_key: "rich-1",
+		body: [{ _type: "image", _key: "img-1", asset: { _ref: "", url: PHOTO }, alt: "Diagram" }],
+	};
+
+	async function openImageSettings() {
+		await page.getByRole("button", { name: "Rich text", exact: true }).click();
+		await userEvent.click(page.getByRole("img", { name: "Diagram" }));
+		const toolbar = page.elementLocator(
+			await vi.waitFor(() => {
+				const found = document.querySelector<HTMLElement>("[data-emdash-image-bubble-menu]");
+				expect(found).toBeVisible();
+				return found!;
+			}),
+		);
+		await toolbar.getByRole("button", { name: "Image settings" }).click();
+	}
+
+	it("offers a dark mode variant when the block field opts in", async () => {
+		await renderEditor([richTextBlock], [richText(true)]);
+		await openImageSettings();
+
+		await expect.element(page.getByRole("button", { name: "Add dark mode variant" })).toBeVisible();
+	});
+
+	it("offers no dark mode variant when the block field does not opt in", async () => {
+		await renderEditor([richTextBlock], [richText(false)]);
+		await openImageSettings();
+
+		await expect.element(page.getByRole("textbox", { name: "Alt text" })).toBeVisible();
+		expect(page.getByRole("button", { name: "Add dark mode variant" }).query()).toBeNull();
+	});
+});

@@ -155,6 +155,52 @@ describe("block type contracts", () => {
 		);
 	});
 
+	it("accepts a dark variant on rich text fields and versions turning it on or off", async () => {
+		const plain: BlockFieldDefinition[] = [{ slug: "body", label: "Body", type: "portableText" }];
+		const withVariant: BlockFieldDefinition[] = [
+			{ slug: "body", label: "Body", type: "portableText", options: { darkVariant: true } },
+		];
+
+		expect(validateBlockFields(withVariant)).toEqual(withVariant);
+		expect(await fingerprintBlockFields(withVariant)).not.toBe(await fingerprintBlockFields(plain));
+		expect(compareBlockFields(plain, withVariant)).toMatchObject({
+			compatible: true,
+			differences: [
+				expect.objectContaining({
+					path: "fields.body.options.darkVariant",
+					compatibility: "compatible",
+				}),
+			],
+		});
+		expect(compareBlockFields(withVariant, plain)).toMatchObject({
+			compatible: false,
+			differences: [
+				expect.objectContaining({
+					path: "fields.body.options.darkVariant",
+					compatibility: "breaking",
+				}),
+			],
+		});
+	});
+
+	it("rejects a dark variant on fields without images or a non-boolean value", () => {
+		expect(() =>
+			validateBlockFields([
+				{ slug: "summary", label: "Summary", type: "text", options: { darkVariant: true } },
+			] as BlockFieldDefinition[]),
+		).toThrow(/fields\[0\]\.options/);
+		expect(() =>
+			validateBlockFields([
+				{
+					slug: "body",
+					label: "Body",
+					type: "portableText",
+					options: { darkVariant: "yes" },
+				},
+			] as unknown as BlockFieldDefinition[]),
+		).toThrow(/fields\[0\]\.options\.darkVariant/);
+	});
+
 	it("rejects invalid definitions with a stable field path", () => {
 		expect(() => validateBlockFields([{ slug: "_key", label: "Key", type: "string" }])).toThrow(
 			/fields\[0\]\.slug/,

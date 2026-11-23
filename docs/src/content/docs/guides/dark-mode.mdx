@@ -130,6 +130,8 @@ Images inserted into a Portable Text field with the editor's image button can ca
 }
 ```
 
+A `portableText` field inside a [block type](/guides/blocks/) takes the same option in the block-type version's field list. Block types have no field editor in the admin, so set it in the seed file or through the block-type API. Turning it on in a new version is a compatible change; turning it off is a breaking one.
+
 Select an image in the editor, open its settings, and click **Add dark mode variant**. The variant applies as soon as you pick it. Replacing the image keeps the variant, and removing the image removes both. The variant shares the image's alt text, caption, link, alignment, and display size.
 
 The variant is stored on the image node as `darkVariant`, in the same shape as the node's own asset:
