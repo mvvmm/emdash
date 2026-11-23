@@ -539,85 +539,87 @@ export function ImageFieldRenderer({
 
 	const darkVariantSlot =
 		darkVariant && objectValue && displayUrl ? (
-			<div className="flex flex-wrap items-center gap-3">
-				{darkDisplayUrl ? (
-					<>
-						<div className="h-12 w-16 shrink-0 overflow-hidden rounded bg-kumo-muted ring ring-kumo-line">
-							{darkImageBroken ? (
-								<div className="flex h-full items-center justify-center text-kumo-subtle">
-									<ImageBroken className="h-5 w-5" aria-hidden="true" />
-								</div>
-							) : (
-								<img
-									src={darkDisplayUrl}
-									alt=""
-									className="h-full w-full object-cover"
-									style={{ objectPosition: darkObjectPosition }}
-									onError={() => setDarkImageBroken(true)}
-								/>
-							)}
-						</div>
-						<div className="grid min-w-0 flex-1 gap-0.5">
-							<Text as="p" variant="secondary" size="xs">
-								{t`Dark mode variant`}
-							</Text>
-							<Text as="p" bold truncate>
-								{darkFilename}
-							</Text>
-						</div>
-						<div className="flex basis-full flex-wrap items-center gap-2 sm:basis-auto">
-							<Button
-								type="button"
-								size="sm"
-								variant="secondary"
-								icon={<ImageSquare aria-hidden="true" />}
-								onClick={() => openPicker("darkVariant")}
-								disabled={assetEditor.isActive}
-								aria-label={t`Replace dark mode image`}
-							>
-								{t`Replace`}
-							</Button>
-							{canEditDarkAsset && (
+			<div className="@container/dark-variant">
+				<div className="flex flex-wrap items-center gap-3">
+					{darkDisplayUrl ? (
+						<>
+							<div className="h-12 w-16 shrink-0 overflow-hidden rounded bg-kumo-muted ring ring-kumo-line">
+								{darkImageBroken ? (
+									<div className="flex h-full items-center justify-center text-kumo-subtle">
+										<ImageBroken className="h-5 w-5" aria-hidden="true" />
+									</div>
+								) : (
+									<img
+										src={darkDisplayUrl}
+										alt=""
+										className="h-full w-full object-cover"
+										style={{ objectPosition: darkObjectPosition }}
+										onError={() => setDarkImageBroken(true)}
+									/>
+								)}
+							</div>
+							<div className="grid min-w-0 flex-1 gap-0.5">
+								<Text as="p" variant="secondary" size="xs">
+									{t`Dark mode variant`}
+								</Text>
+								<Text as="p" bold truncate>
+									{darkFilename}
+								</Text>
+							</div>
+							<div className="flex basis-full flex-wrap items-center gap-2 @lg/dark-variant:basis-auto">
 								<Button
 									type="button"
 									size="sm"
 									variant="secondary"
-									icon={<PencilSimple aria-hidden="true" />}
-									loading={assetEditor.isOpening && pickerTarget === "darkVariant"}
-									onClick={(event) => {
-										setPickerTarget("darkVariant");
-										void assetEditor.openAssetEditor(darkValue!.id, event.currentTarget);
-									}}
-									aria-label={t`Edit dark mode asset`}
+									icon={<ImageSquare aria-hidden="true" />}
+									onClick={() => openPicker("darkVariant")}
+									disabled={assetEditor.isActive}
+									aria-label={t`Replace dark mode image`}
 								>
-									{t`Edit asset`}
+									{t`Replace`}
 								</Button>
-							)}
-							<Button
-								type="button"
-								size="sm"
-								variant="secondary-destructive"
-								icon={<X aria-hidden="true" />}
-								onClick={handleRemoveDarkVariant}
-								disabled={assetEditor.isActive}
-								aria-label={t`Remove dark mode variant`}
-							>
-								{t`Remove`}
-							</Button>
-						</div>
-					</>
-				) : (
-					<Button
-						type="button"
-						size="sm"
-						variant="secondary"
-						icon={<Moon aria-hidden="true" />}
-						onClick={() => openPicker("darkVariant")}
-						disabled={assetEditor.isActive}
-					>
-						{t`Add dark mode variant`}
-					</Button>
-				)}
+								{canEditDarkAsset && (
+									<Button
+										type="button"
+										size="sm"
+										variant="secondary"
+										icon={<PencilSimple aria-hidden="true" />}
+										loading={assetEditor.isOpening && pickerTarget === "darkVariant"}
+										onClick={(event) => {
+											setPickerTarget("darkVariant");
+											void assetEditor.openAssetEditor(darkValue!.id, event.currentTarget);
+										}}
+										aria-label={t`Edit dark mode asset`}
+									>
+										{t`Edit asset`}
+									</Button>
+								)}
+								<Button
+									type="button"
+									size="sm"
+									variant="secondary-destructive"
+									icon={<X aria-hidden="true" />}
+									onClick={handleRemoveDarkVariant}
+									disabled={assetEditor.isActive}
+									aria-label={t`Remove dark mode variant`}
+								>
+									{t`Remove`}
+								</Button>
+							</div>
+						</>
+					) : (
+						<Button
+							type="button"
+							size="sm"
+							variant="secondary"
+							icon={<Moon aria-hidden="true" />}
+							onClick={() => openPicker("darkVariant")}
+							disabled={assetEditor.isActive}
+						>
+							{t`Add dark mode variant`}
+						</Button>
+					)}
+				</div>
 			</div>
 		) : null;
 
