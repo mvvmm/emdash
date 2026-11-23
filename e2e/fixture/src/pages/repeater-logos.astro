@@ -1,0 +1,22 @@
+---
+import { getEmDashEntry } from "emdash";
+import { Image } from "emdash/ui";
+
+const collection = Astro.url.searchParams.get("collection");
+const slug = Astro.url.searchParams.get("slug");
+if (!collection || !slug) return new Response("Not found", { status: 404 });
+const { entry } = await getEmDashEntry(collection, slug);
+if (!entry) return new Response("Not found", { status: 404 });
+const rows = Array.isArray(entry.data.logos) ? entry.data.logos : [];
+---
+
+<html>
+	<head>
+		<title>Repeater logos</title>
+	</head>
+	<body>
+		<ul id="logos">
+			{rows.map((row) => <li>{row.logo && <Image image={row.logo} />}</li>)}
+		</ul>
+	</body>
+</html>

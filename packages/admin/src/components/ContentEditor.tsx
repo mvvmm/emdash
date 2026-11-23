@@ -4249,6 +4249,7 @@ function FieldRenderer({
 				required?: boolean;
 				options?: string[];
 				validation?: { allowedMimeTypes?: string[] };
+				darkVariant?: boolean;
 			}>;
 			return (
 				<RepeaterField

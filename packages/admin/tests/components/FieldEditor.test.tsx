@@ -1224,6 +1224,68 @@ describe("FieldEditor", () => {
 		});
 	});
 
+	describe("repeater image sub-field dark mode variant", () => {
+		const logoRepeater = (subField: Record<string, unknown>) =>
+			makeField({
+				slug: "logos",
+				label: "Logos",
+				type: "repeater",
+				validation: {
+					subFields: [{ slug: "logo", label: "Logo", ...subField }],
+				} as SchemaField["validation"],
+			});
+
+		it("is offered only on image sub-fields", async () => {
+			const screen = await renderInRouter(
+				<FieldEditor {...defaultProps} field={logoRepeater({ type: "string" })} />,
+			);
+
+			expect(screen.getByRole("switch", { name: "Dark mode variant" }).query()).toBeNull();
+			await screen.getByRole("combobox", { name: "Type" }).click();
+			await screen.getByRole("option", { name: "Image" }).click();
+			await expect
+				.element(screen.getByRole("switch", { name: "Dark mode variant" }))
+				.not.toBeChecked();
+		});
+
+		it("saves the flag on the sub-field when switched on", async () => {
+			const onSave = vi.fn();
+			const screen = await renderInRouter(
+				<FieldEditor {...defaultProps} field={logoRepeater({ type: "image" })} onSave={onSave} />,
+			);
+
+			const toggle = screen.getByRole("switch", { name: "Dark mode variant" });
+			toggle.element().click();
+			await expect.element(toggle).toBeChecked();
+			screen.getByRole("button", { name: "Update Field" }).element().click();
+
+			expect(onSave.mock.calls[0]?.[0].validation.subFields).toEqual([
+				{ slug: "logo", label: "Logo", type: "image", required: undefined, darkVariant: true },
+			]);
+		});
+
+		it("drops the flag when the sub-field stops being an image", async () => {
+			const onSave = vi.fn();
+			const screen = await renderInRouter(
+				<FieldEditor
+					{...defaultProps}
+					field={logoRepeater({ type: "image", darkVariant: true })}
+					onSave={onSave}
+				/>,
+			);
+
+			const toggle = screen.getByRole("switch", { name: "Dark mode variant" });
+			await expect.element(toggle).toBeChecked();
+			await screen.getByRole("combobox", { name: "Type" }).click();
+			await screen.getByRole("option", { name: "Short Text" }).click();
+			screen.getByRole("button", { name: "Update Field" }).element().click();
+
+			expect(onSave.mock.calls[0]?.[0].validation.subFields).toEqual([
+				{ slug: "logo", label: "Logo", type: "string", required: undefined },
+			]);
+		});
+	});
+
 	describe("dialog closed", () => {
 		it("renders nothing visible when open is false", async () => {
 			const screen = await renderInRouter(<FieldEditor {...defaultProps} open={false} />);

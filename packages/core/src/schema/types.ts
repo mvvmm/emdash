@@ -186,6 +186,8 @@ export interface RepeaterSubField {
 	validation?: {
 		allowedMimeTypes?: string[];
 	}; // For image sub-fields
+	/** Image sub-fields only: editors can add a second image that the site shows in dark mode. */
+	darkVariant?: boolean;
 }
 
 /** Allowed types for repeater sub-fields (no nesting, no complex types) */

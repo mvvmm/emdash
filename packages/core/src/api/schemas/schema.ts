@@ -79,29 +79,40 @@ const repeaterSubFieldValidation = z.object({
 		.optional(),
 });
 
-const repeaterSubFieldSchema = z.object({
-	slug: z.string().min(1).max(63).regex(slugPattern, "Invalid slug format"),
-	// Keep in sync with REPEATER_SUB_FIELD_TYPES in schema/types.ts.
-	// ("url" was already a documented sub-field type but missing here.)
-	type: z.enum([
-		"string",
-		"text",
-		"url",
-		"number",
-		"integer",
-		"boolean",
-		"datetime",
-		"select",
-		"image",
-	]),
-	label: z.string().min(1),
-	required: z.boolean().optional(),
-	options: z.array(z.string()).optional(),
-	validation: repeaterSubFieldValidation
-		.nullish()
-		.transform((value) => value ?? undefined)
-		.pipe(repeaterSubFieldValidation.optional()),
-});
+const repeaterSubFieldSchema = z
+	.object({
+		slug: z.string().min(1).max(63).regex(slugPattern, "Invalid slug format"),
+		// Keep in sync with REPEATER_SUB_FIELD_TYPES in schema/types.ts.
+		// ("url" was already a documented sub-field type but missing here.)
+		type: z.enum([
+			"string",
+			"text",
+			"url",
+			"number",
+			"integer",
+			"boolean",
+			"datetime",
+			"select",
+			"image",
+		]),
+		label: z.string().min(1),
+		required: z.boolean().optional(),
+		options: z.array(z.string()).optional(),
+		validation: repeaterSubFieldValidation
+			.nullish()
+			.transform((value) => value ?? undefined)
+			.pipe(repeaterSubFieldValidation.optional()),
+		darkVariant: z.boolean().optional(),
+	})
+	.superRefine((subField, ctx) => {
+		if (subField.darkVariant !== undefined && subField.type !== "image") {
+			ctx.addIssue({
+				code: "custom",
+				path: ["darkVariant"],
+				message: `darkVariant is not supported for type "${subField.type}"`,
+			});
+		}
+	});
 
 const urlPatternValue = z.string().superRefine((pattern, ctx) => {
 	try {

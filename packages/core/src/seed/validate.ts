@@ -356,6 +356,16 @@ export function validateSeed(data: unknown): ValidationResult {
 								warnings.push(
 									`${fieldPrefix}.validation.subFields: repeater needs a non-empty array of sub-fields, so its rows have nothing to edit`,
 								);
+							} else {
+								for (const [subIndex, subField] of subFields.entries()) {
+									if (subField?.darkVariant === undefined) continue;
+									const subPrefix = `${fieldPrefix}.validation.subFields[${subIndex}].darkVariant`;
+									if (subField.type !== "image") {
+										errors.push(`${subPrefix}: is not supported for type "${subField.type}"`);
+									} else if (typeof subField.darkVariant !== "boolean") {
+										errors.push(`${subPrefix}: must be a boolean`);
+									}
+								}
 							}
 						}
 					}

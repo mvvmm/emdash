@@ -320,4 +320,36 @@ describe("An image inside a block", () => {
 		await expect.element(remove).toHaveFocus();
 		await expect.poll(() => opacityOf(remove)).toBe(1);
 	});
+
+	it("offers a dark mode slot for a list's image sub-field that enables it", async () => {
+		const darkLogos = blockType("dark_logos", "Dark logo wall", [
+			{
+				slug: "logos",
+				label: "Logos",
+				type: "repeater",
+				validation: {
+					subFields: [
+						{ slug: "name", label: "Company name", type: "string" },
+						{ slug: "logo", label: "Logo", type: "image", darkVariant: true },
+					],
+				},
+			},
+		]);
+		await renderEditor(
+			[
+				{
+					_type: "dark_logos",
+					_version: 1,
+					_key: "logos-1",
+					logos: [{ name: "Arc", logo: { id: "media-1", src: PHOTO } }],
+				},
+			],
+			[darkLogos],
+		);
+		await page.getByRole("button", { name: "Dark logo wall", exact: true }).click();
+		await page.getByRole("button", { name: "Arc", exact: true }).click();
+
+		await expect.element(page.getByRole("button", { name: "Add dark mode variant" })).toBeVisible();
+		expect(page.getByRole("button", { name: "Replace Logo" }).query()).toBeNull();
+	});
 });

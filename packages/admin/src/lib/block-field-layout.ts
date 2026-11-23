@@ -4,6 +4,8 @@ export interface LayoutField {
 	slug: string;
 	type: string;
 	required?: boolean;
+	/** A list's image sub-field that offers a dark mode variant. */
+	darkVariant?: boolean;
 }
 
 export interface PlanField extends LayoutField {
@@ -35,7 +37,7 @@ export interface ListSubField extends PlanField {
 export type LayoutFieldDefinition = Pick<
 	BlockFieldDefinition,
 	"slug" | "label" | "required" | "validation" | "options"
-> & { type: string };
+> & { type: string; darkVariant?: boolean };
 
 export interface ListItemText {
 	/** Empty when the item has no title field or its title is empty. */
@@ -69,6 +71,11 @@ const HEADLINE_WORDS = ["headline", "heading", "title", "statement"];
 const NOT_HEADLINE_WORDS = ["label", "eyebrow", "kicker", "tag"];
 const WHITESPACE_RUN = /\s+/g;
 const ITEM_SUMMARY_VALUES = 2;
+
+/** Its dark mode slot sits under the photo, so the field needs the full width, never a thumbnail. */
+function hasDarkVariantSlot(field: LayoutField): boolean {
+	return field.type === "image" && field.darkVariant === true;
+}
 
 export function isLinkField(field: LayoutField): boolean {
 	return field.type === "url" || (field.type === "string" && LINK_SLUG.test(field.slug));
@@ -128,7 +135,7 @@ export function listPresentation(subFields: readonly LayoutField[]): ListPresent
 	}
 	if (
 		subFields.length <= MAX_TABLE_COLUMNS &&
-		subFields.every((field) => TABLE_TYPES.has(field.type)) &&
+		subFields.every((field) => TABLE_TYPES.has(field.type) && !hasDarkVariantSlot(field)) &&
 		subFields.filter((field) => field.type === "image").length <= 1
 	) {
 		return "table";
@@ -201,7 +208,7 @@ export function planBlockFields<T extends PlanField>(
 
 	const isSetting = (part: BlockFieldPart<T>) =>
 		part.kind === "button" ||
-		(part.kind === "image" && scope === "item") ||
+		(part.kind === "image" && scope === "item" && !hasDarkVariantSlot(part.field)) ||
 		(part.kind === "field" && (SETTING_TYPES.has(part.field.type) || isLinkField(part.field)));
 	const stack = parts.filter((part) => !isSetting(part));
 	const heading =
@@ -239,7 +246,7 @@ export function repeaterSubFields(field: Pick<BlockFieldDefinition, "validation"
 	if (!Array.isArray(subFields)) return [];
 	return subFields.flatMap((subField): ListSubField[] => {
 		if (!isRecord(subField)) return [];
-		const { slug, type, label, required, options, validation } = subField;
+		const { slug, type, label, required, options, validation, darkVariant } = subField;
 		if (typeof slug !== "string" || typeof type !== "string") return [];
 		const allowedMimeTypes =
 			isRecord(validation) && Array.isArray(validation.allowedMimeTypes)
@@ -257,6 +264,7 @@ export function repeaterSubFields(field: Pick<BlockFieldDefinition, "validation"
 					? { options: options.filter((option): option is string => typeof option === "string") }
 					: {}),
 				...(allowedMimeTypes ? { validation: { allowedMimeTypes } } : {}),
+				...(type === "image" && darkVariant === true ? { darkVariant } : {}),
 			},
 		];
 	});

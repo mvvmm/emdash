@@ -118,6 +118,11 @@ function validateRepeaterSubFields(
 		if (required !== undefined && typeof required !== "boolean") {
 			fail(`${fieldPath}.required`, "must be a boolean");
 		}
+		const darkVariant = "darkVariant" in subField ? subField.darkVariant : undefined;
+		if (darkVariant !== undefined && mode === "write") {
+			if (type !== "image") fail(`${fieldPath}.darkVariant`, `is not supported for type "${type}"`);
+			if (typeof darkVariant !== "boolean") fail(`${fieldPath}.darkVariant`, "must be a boolean");
+		}
 		const validation = "validation" in subField ? subField.validation : undefined;
 		if (
 			type === "image" &&
@@ -377,6 +382,7 @@ function repeaterFields(fields: readonly RepeaterSubField[] | undefined): BlockF
 					},
 				}
 			: {}),
+		...(field.darkVariant !== undefined ? { options: { darkVariant: field.darkVariant } } : {}),
 	}));
 }
 

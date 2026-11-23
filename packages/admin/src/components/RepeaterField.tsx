@@ -32,6 +32,7 @@ interface RepeaterSubFieldDef {
 	required?: boolean;
 	options?: string[];
 	validation?: { allowedMimeTypes?: string[] };
+	darkVariant?: boolean;
 }
 
 export interface RepeaterFieldProps {
@@ -463,6 +464,7 @@ function SubFieldInput({
 					}
 					onChange={(v) => onChange(v)}
 					required={subField.required}
+					darkVariant={subField.darkVariant === true}
 				/>
 			);
 		default:

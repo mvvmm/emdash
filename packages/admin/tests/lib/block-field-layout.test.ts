@@ -90,6 +90,52 @@ describe("repeaterSubFields", () => {
 	});
 });
 
+describe("repeater image dark variant", () => {
+	it("keeps darkVariant only on image sub-fields that set it to true", () => {
+		expect(
+			repeaterSubFields({
+				validation: {
+					subFields: [
+						{ slug: "logo", type: "image", darkVariant: true },
+						{ slug: "icon", type: "image", darkVariant: "yes" },
+						{ slug: "name", type: "string", darkVariant: true },
+					],
+				},
+			}),
+		).toEqual([
+			{ slug: "logo", type: "image", label: "logo", darkVariant: true },
+			{ slug: "icon", type: "image", label: "icon" },
+			{ slug: "name", type: "string", label: "name" },
+		]);
+	});
+
+	it("expands a list whose image has a dark mode slot instead of drawing a table", () => {
+		expect(
+			listPresentation([
+				{ slug: "name", type: "string" },
+				{ slug: "logo", type: "image", darkVariant: true },
+			]),
+		).toBe("items");
+	});
+
+	it("gives an item's image with a dark mode slot the full width instead of a settings row", () => {
+		expect(
+			layout(
+				[
+					field("string", "name"),
+					field("image", "logo"),
+					{ ...field("image", "icon"), darkVariant: true },
+				],
+				"item",
+			),
+		).toEqual({
+			content: ["name", "image(icon)"],
+			settings: ["image(logo)"],
+			advanced: [],
+		});
+	});
+});
+
 describe("planBlockFields", () => {
 	it.each(
 		["_label", "_text", ""].flatMap((textSuffix) =>

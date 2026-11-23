@@ -482,6 +482,33 @@ describe("validateSeed", () => {
 			expect(result.warnings).toEqual([]);
 		});
 
+		it("accepts darkVariant on an image sub-field", () => {
+			const result = seedWithRepeater({
+				validation: {
+					subFields: [{ slug: "logo", label: "Logo", type: "image", darkVariant: true }],
+				},
+			});
+
+			expect(result.errors).toEqual([]);
+		});
+
+		it("rejects darkVariant on a non-image sub-field or with a non-boolean value", () => {
+			const result = seedWithRepeater({
+				validation: {
+					subFields: [
+						{ slug: "name", label: "Name", type: "string", darkVariant: true },
+						{ slug: "logo", label: "Logo", type: "image", darkVariant: "yes" },
+					],
+				},
+			});
+
+			expect(result.valid).toBe(false);
+			expect(result.errors).toEqual([
+				'collections[0].fields[0].validation.subFields[0].darkVariant: is not supported for type "string"',
+				"collections[0].fields[0].validation.subFields[1].darkVariant: must be a boolean",
+			]);
+		});
+
 		it("finds no repeater sub-field warnings in the repository's seeds", () => {
 			const root = resolve(import.meta.dirname, "../../../../..");
 			const seeds = ["templates", "demos", "infra", "fixtures"].flatMap((dir) =>

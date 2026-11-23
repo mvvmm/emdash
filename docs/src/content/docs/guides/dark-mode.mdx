@@ -68,6 +68,24 @@ In a seed file, set the `darkVariant` widget option on the field:
 }
 ```
 
+An `image` sub-field in a repeater offers the same slot. Set `darkVariant` on the sub-field itself, next to its `type`, rather than in `options`, which holds a `select` sub-field's choices. This also works for a repeater inside a block type:
+
+```json title=".emdash/seed.json"
+{
+	"slug": "logos",
+	"label": "Logos",
+	"type": "repeater",
+	"validation": {
+		"subFields": [
+			{ "slug": "name", "label": "Name", "type": "string" },
+			{ "slug": "logo", "label": "Logo", "type": "image", "darkVariant": true }
+		]
+	}
+}
+```
+
+In the admin, edit the repeater field and switch on **Dark mode variant** on the image sub-field. Setting `darkVariant` on a sub-field of any other type is a validation error.
+
 ### Pick the variant in the editor
 
 <Steps>
@@ -110,6 +128,12 @@ if (!post) {
 The output contains two `<img>` elements. The primary image gets the class `emdash-image--light` and the variant gets `emdash-image--dark`. Both use the primary image's `alt` text, width and height overrides, and loading attributes. Each keeps its own placeholder color.
 
 An `id` you pass stays on the primary image; the variant gets the same `id` with a `--dark` suffix, so `id="hero"` yields `hero` and `hero--dark`.
+
+A repeater row's image carries its variant the same way, so render each row's image with `Image` too:
+
+```astro
+{page.data.logos?.map((row) => row.logo && <Image image={row.logo} />)}
+```
 
 When the dark image comes from somewhere else, such as a second image field, pass it explicitly:
 

@@ -8,6 +8,7 @@ import {
 	validateBlockFields,
 } from "../../../src/schema/block-type-contract.js";
 import type { BlockFieldDefinition } from "../../../src/schema/block-types.js";
+import type { RepeaterSubField } from "../../../src/schema/types.js";
 
 const baseFields: BlockFieldDefinition[] = [
 	{
@@ -181,5 +182,94 @@ describe("block type contracts", () => {
 				},
 			]),
 		).toThrow(/fields\[0\]\.validation\.subFields\[0\]\.type/);
+	});
+
+	describe("repeater image dark variant", () => {
+		const logos = (darkVariant?: unknown): BlockFieldDefinition[] => [
+			{
+				slug: "logos",
+				label: "Logos",
+				type: "repeater",
+				validation: {
+					subFields: [
+						{
+							slug: "logo",
+							label: "Logo",
+							type: "image",
+							...(darkVariant === undefined ? {} : { darkVariant }),
+						} as RepeaterSubField,
+					],
+				},
+			},
+		];
+
+		it("accepts the flag on an image sub-field and keeps it", () => {
+			const [field] = validateBlockFields(logos(true));
+			expect(field!.validation?.subFields?.[0]?.darkVariant).toBe(true);
+		});
+
+		it("rejects a non-boolean flag", () => {
+			expect(() => validateBlockFields(logos("yes"))).toThrow(
+				/fields\[0\]\.validation\.subFields\[0\]\.darkVariant: must be a boolean/,
+			);
+		});
+
+		it("rejects the flag on a sub-field that is not an image", () => {
+			expect(() =>
+				validateBlockFields([
+					{
+						slug: "rows",
+						label: "Rows",
+						type: "repeater",
+						validation: {
+							subFields: [{ slug: "name", label: "Name", type: "string", darkVariant: true }],
+						},
+					},
+				]),
+			).toThrow(/subFields\[0\]\.darkVariant: is not supported for type "string"/);
+		});
+
+		it("still reads stored definitions that carry an invalid flag", () => {
+			const stored = [
+				{
+					slug: "rows",
+					label: "Rows",
+					type: "repeater" as const,
+					validation: {
+						subFields: [
+							{ slug: "name", label: "Name", type: "string" as const, darkVariant: true },
+						],
+					},
+				},
+			];
+			expect(validateBlockFields(stored, { mode: "read" })).toEqual(stored);
+		});
+
+		it("changes the fingerprint and reports turning the slot on as compatible", async () => {
+			expect(await fingerprintBlockFields(logos(true))).not.toBe(
+				await fingerprintBlockFields(logos()),
+			);
+			expect(compareBlockFields(logos(), logos(true))).toEqual({
+				compatible: true,
+				differences: [
+					{
+						path: "fields.logos.validation.subFields.logo.options.darkVariant",
+						change: "dark variant changed",
+						compatibility: "compatible",
+					},
+				],
+			});
+		});
+
+		it("reports turning the slot off as breaking", () => {
+			const result = compareBlockFields(logos(true), logos(false));
+			expect(result.compatible).toBe(false);
+			expect(result.differences).toEqual([
+				expect.objectContaining({
+					path: "fields.logos.validation.subFields.logo.options.darkVariant",
+					compatibility: "breaking",
+				}),
+			]);
+		});
 	});
 });

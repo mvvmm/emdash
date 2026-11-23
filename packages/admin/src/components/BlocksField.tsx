@@ -422,15 +422,18 @@ function listFieldDefinition({
 	validation,
 	...subField
 }: ListSubField): LayoutFieldDefinition {
-	return options || validation
-		? {
-				...subField,
-				validation: {
-					...validation,
-					...(options ? { options } : {}),
-				},
-			}
-		: subField;
+	return {
+		...subField,
+		...(options || validation
+			? {
+					validation: {
+						...validation,
+						...(options ? { options } : {}),
+					},
+				}
+			: {}),
+		...(subField.darkVariant ? { options: { darkVariant: true } } : {}),
+	};
 }
 
 function listLimit(field: LayoutFieldDefinition, key: "minItems" | "maxItems") {

@@ -172,6 +172,7 @@ interface RepeaterSubFieldState {
 	/** The type the sub-field was saved with, if it has been saved. */
 	persistedType?: string;
 	validation?: { allowedMimeTypes?: string[] };
+	darkVariant?: boolean;
 }
 
 interface FieldFormState {
@@ -937,6 +938,7 @@ export function FieldEditor({
 						? { options: optionList(sf.options) }
 						: {}),
 					...(sf.validation ? { validation: sf.validation } : {}),
+					...(sf.type === "image" && sf.darkVariant ? { darkVariant: true } : {}),
 				}));
 			}
 			if (formState.minItems)
@@ -1734,6 +1736,24 @@ export function FieldEditor({
 															setFormState((prev) => ({ ...prev, subFields: updated }));
 														}}
 													/>
+													{sf.type === "image" && (
+														<Switch
+															checked={sf.darkVariant === true}
+															onCheckedChange={(checked) => {
+																const updated = [...formState.subFields];
+																updated[i] = { ...sf, darkVariant: checked };
+																setFormState((prev) => ({ ...prev, subFields: updated }));
+															}}
+															label={
+																<HelpLabel
+																	help={t`Editors can select a second image that the site shows in dark mode.`}
+																>
+																	{t`Dark mode variant`}
+																</HelpLabel>
+															}
+															aria-label={t`Dark mode variant`}
+														/>
+													)}
 												</div>
 												<Button
 													variant="ghost"

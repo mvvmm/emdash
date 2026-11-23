@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 
 import {
+	blockFieldDefinitionSchema,
 	contentCreateBody,
 	contentListQuery,
 	contentTrashQuery,
@@ -456,5 +457,38 @@ describe("mediaUploadUrlBody schema factory", () => {
 			errorMessage = String(e);
 		}
 		expect(errorMessage).toContain("71MB");
+	});
+});
+
+describe("repeater sub-field darkVariant", () => {
+	const repeater = (subField: Record<string, unknown>) => ({
+		slug: "logos",
+		label: "Logos",
+		type: "repeater",
+		validation: { subFields: [{ slug: "logo", label: "Logo", ...subField }] },
+	});
+
+	it("keeps darkVariant on an image sub-field", () => {
+		const result = createFieldBody.parse(repeater({ type: "image", darkVariant: true }));
+		expect(result.validation?.subFields?.[0]?.darkVariant).toBe(true);
+	});
+
+	it("keeps darkVariant on a block type's image sub-field", () => {
+		const result = blockFieldDefinitionSchema.parse(repeater({ type: "image", darkVariant: true }));
+		expect(result.validation?.subFields?.[0]?.darkVariant).toBe(true);
+	});
+
+	it("rejects a non-boolean darkVariant", () => {
+		expect(createFieldBody.safeParse(repeater({ type: "image", darkVariant: "yes" })).success).toBe(
+			false,
+		);
+	});
+
+	it("rejects darkVariant on a sub-field that is not an image", () => {
+		const result = updateFieldBody.safeParse({
+			validation: repeater({ type: "string", darkVariant: true }).validation,
+		});
+		expect(result.success).toBe(false);
+		expect(result.error?.issues[0]?.path).toEqual(["validation", "subFields", 0, "darkVariant"]);
 	});
 });
