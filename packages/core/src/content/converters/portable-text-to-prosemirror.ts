@@ -11,6 +11,7 @@ import {
 } from "@emdash-cms/admin/portable-text-table";
 
 import { resolveImageMedia, sanitizeGalleryImages } from "./gallery.js";
+import { imageDarkVariantToAttrs, type ImageDarkVariantAttrs } from "./image-dark-variant.js";
 import { normalizeImageLink } from "./image-link.js";
 import {
 	UnsupportedPortableTextMarksError,
@@ -690,6 +691,11 @@ function imageDimension(value: unknown): number | undefined {
 	return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
 }
 
+function darkVariantAttr(value: unknown): { darkVariant?: ImageDarkVariantAttrs } {
+	const darkVariant = imageDarkVariantToAttrs(value);
+	return darkVariant ? { darkVariant } : {};
+}
+
 /**
  * Convert image block to ProseMirror
  */
@@ -711,6 +717,7 @@ function convertImage(block: PortableTextImageBlock, preserveIdentity: boolean):
 				displayHeight: imageDimension(block.displayHeight),
 				alignment: imageAlignment(block.alignment),
 				link: normalizeImageLink(block.link),
+				...darkVariantAttr(block.darkVariant),
 			},
 			block._key,
 			preserveIdentity,

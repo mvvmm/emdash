@@ -162,6 +162,10 @@ function ImageNodeView({
 		displayHeight: node.attrs.displayHeight,
 		alignment: node.attrs.alignment,
 		link: node.attrs.link,
+		darkVariant: node.attrs.darkVariant,
+		offerDarkVariant:
+			(editor.storage as unknown as Record<string, Record<string, unknown>>).image
+				?.offerDarkVariant === true,
 	});
 
 	const openSidebar = () => {
@@ -355,6 +359,8 @@ export const ImageExtension = ImageNode.extend({
 			onCloseBlockSidebar: null as (() => void) | null,
 			/** One per mounted image node view, so the toolbar can toggle a given image's settings */
 			settingsHandles: new Set<ImageSettingsHandle>(),
+			/** Set by PortableTextEditor when its field offers a dark mode variant for images */
+			offerDarkVariant: false,
 		};
 	},
 

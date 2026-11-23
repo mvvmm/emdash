@@ -103,12 +103,14 @@ function paragraph(key: string, text: string): PortableTextBlock {
 function Host({
 	value,
 	withSettings,
+	imageDarkVariant,
 	onReady,
 	onPanel,
 	onChange,
 }: {
 	value: PortableTextBlock[];
 	withSettings: boolean;
+	imageDarkVariant?: boolean;
 	onReady: (editor: Editor | null) => void;
 	onPanel: (panel: BlockSidebarPanel | null) => void;
 	onChange: (value: PortableTextBlock[]) => void;
@@ -130,6 +132,7 @@ function Host({
 				onEditorReady={onReady}
 				onBlockSidebarOpen={withSettings ? setPanel : undefined}
 				onBlockSidebarClose={withSettings ? close : undefined}
+				imageDarkVariant={imageDarkVariant}
 			/>
 			{panel && (
 				<ImageDetailPanel
@@ -148,7 +151,13 @@ async function setup({
 	image = {},
 	withSettings = true,
 	extraImage = false,
-}: { image?: Record<string, unknown>; withSettings?: boolean; extraImage?: boolean } = {}) {
+	imageDarkVariant = false,
+}: {
+	image?: Record<string, unknown>;
+	withSettings?: boolean;
+	extraImage?: boolean;
+	imageDarkVariant?: boolean;
+} = {}) {
 	let editor: Editor | null = null;
 	let panel: BlockSidebarPanel | null = null;
 	let saved: PortableTextBlock[] = [];
@@ -161,6 +170,7 @@ async function setup({
 				...(extraImage ? [imageBlock({ _key: "image-2", alt: "Second" })] : []),
 			]}
 			withSettings={withSettings}
+			imageDarkVariant={imageDarkVariant}
 			onReady={(instance) => {
 				editor = instance;
 			}}
@@ -731,5 +741,66 @@ describe("Image toolbar", () => {
 
 		await vi.waitFor(() => expect(imageAttrs(editor)?.mediaId).toBe("new-media"));
 		expect(button(toolbar, "Alt text")).toHaveAttribute("aria-pressed", "true");
+	});
+});
+
+describe("Image dark variant", () => {
+	async function openSettings(img: HTMLElement) {
+		const toolbar = await selectImage(img);
+		await userEvent.click(button(toolbar, "Image settings"));
+		return toolbar;
+	}
+
+	it("offers no dark slot when the field does not opt in", async () => {
+		const { img, getPanel } = await setup();
+		await openSettings(img);
+
+		await vi.waitFor(() => expect(getPanel()).not.toBeNull());
+		await expect.element(page.getByRole("button", { name: "Save", exact: true })).toBeVisible();
+		expect(page.getByRole("button", { name: "Add dark mode variant" }).query()).toBeNull();
+	});
+
+	it("saves a picked variant on the image and keeps its settings open", async () => {
+		const { editor, img, getPanel, getSaved } = await setup({ imageDarkVariant: true });
+		await openSettings(img);
+
+		await userEvent.click(page.getByRole("button", { name: "Add dark mode variant" }));
+		await userEvent.click(page.getByRole("button", { name: "Choose replacement" }));
+
+		await vi.waitFor(() =>
+			expect(imageAttrs(editor)?.darkVariant).toMatchObject({
+				src: REPLACEMENT.url,
+				mediaId: "new-media",
+			}),
+		);
+		expect(imageAttrs(editor)?.mediaId).toBe("cf-1");
+		await vi.waitFor(() =>
+			expect(getSaved().find((block) => block._type === "image")).toMatchObject({
+				asset: { _ref: "cf-1" },
+				darkVariant: { asset: { _ref: "new-media", url: REPLACEMENT.url }, width: 800 },
+			}),
+		);
+		expect(getPanel()).not.toBeNull();
+	});
+
+	it("keeps the variant when the image is replaced", async () => {
+		const darkVariant = { asset: { _ref: "dark-1", url: "/dark.jpg" } };
+		const { editor, img } = await setup({ image: { darkVariant }, imageDarkVariant: true });
+		const toolbar = await selectImage(img);
+
+		await userEvent.click(button(toolbar, "Replace"));
+		await userEvent.click(page.getByRole("button", { name: "Choose replacement" }));
+
+		await vi.waitFor(() => expect(imageAttrs(editor)?.mediaId).toBe("new-media"));
+		expect(imageAttrs(editor)?.darkVariant).toMatchObject({ src: "/dark.jpg", mediaId: "dark-1" });
+	});
+
+	it("keeps the variant through the editor's HTML, as copy and paste does", async () => {
+		const darkVariant = { asset: { _ref: "dark-1", url: "/dark.jpg" } };
+		const { editor } = await setup({ image: { darkVariant } });
+
+		editor.commands.setContent(editor.getHTML());
+
+		expect(imageAttrs(editor)?.darkVariant).toMatchObject({ src: "/dark.jpg", mediaId: "dark-1" });
 	});
 });

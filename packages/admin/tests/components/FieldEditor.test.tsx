@@ -839,6 +839,29 @@ describe("FieldEditor", () => {
 				expect.objectContaining({ options: { showPreview: true } }),
 			);
 		});
+
+		it("saves the option for a rich text field", async () => {
+			const onSave = vi.fn();
+			const bodyField = makeField({
+				...imageField,
+				slug: "body",
+				label: "Body",
+				type: "portableText",
+			});
+			const screen = await renderInRouter(
+				<FieldEditor {...defaultProps} field={bodyField} onSave={onSave} />,
+			);
+
+			const toggle = screen.getByRole("switch", { name: "Dark mode variant" });
+			await expect.element(toggle).not.toBeChecked();
+			toggle.element().click();
+			await expect.element(toggle).toBeChecked();
+			await save(screen);
+
+			expect(onSave).toHaveBeenCalledWith(
+				expect.objectContaining({ options: { darkVariant: true } }),
+			);
+		});
 	});
 
 	// ---- A new reference field ----

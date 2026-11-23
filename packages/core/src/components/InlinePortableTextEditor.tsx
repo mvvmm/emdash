@@ -27,6 +27,10 @@ import { exitSuggestion } from "@tiptap/suggestion";
 import * as React from "react";
 
 import { resolveImageMedia } from "../content/converters/gallery.js";
+import {
+	imageDarkVariantFromAttrs,
+	imageDarkVariantToAttrs,
+} from "../content/converters/image-dark-variant.js";
 import { normalizeImageLink } from "../content/converters/image-link.js";
 import {
 	assertPortableTextMarksSupported,
@@ -205,6 +209,11 @@ function imageAlignment(value: unknown): ImageAlignment | undefined {
 		: undefined;
 }
 
+function darkVariantField(value: unknown) {
+	const darkVariant = imageDarkVariantFromAttrs(value);
+	return darkVariant ? { darkVariant } : {};
+}
+
 function canonicalMediaProviderId(provider: string | undefined): string | undefined {
 	return provider === "external-url" ? "external" : provider;
 }
@@ -335,6 +344,7 @@ function convertPMNode(node: PMNode, path: string): PTBlock | PTBlock[] | null {
 				displayHeight: attrDimension(node.attrs, "displayHeight"),
 				alignment: imageAlignment(node.attrs?.alignment),
 				link: normalizeImageLink(node.attrs?.link) ?? undefined,
+				...darkVariantField(node.attrs?.darkVariant),
 			};
 		}
 		case "horizontalRule":
@@ -631,6 +641,7 @@ function convertPTBlock(block: PTBlock): PMNode | null {
 			alignment?: unknown;
 			/** `{ href, blank? }`, or a bare string on WordPress-imported content */
 			link?: unknown;
+			darkVariant?: unknown;
 		};
 		const meta = ib.asset?.meta;
 		const { asset, alt, width, height } = resolveImageMedia(ib);
@@ -664,6 +675,7 @@ function convertPTBlock(block: PTBlock): PMNode | null {
 				displayHeight: ib.displayHeight,
 				alignment: imageAlignment(ib.alignment) ?? null,
 				link: normalizeImageLink(ib.link),
+				darkVariant: imageDarkVariantToAttrs(ib.darkVariant),
 			},
 		};
 	}

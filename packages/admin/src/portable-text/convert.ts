@@ -71,6 +71,16 @@ interface PortableTextImageBlock {
 	alignment?: "left" | "center" | "right" | "wide" | "full";
 	/** `{ href, blank? }` from the editor, or a legacy bare string from WordPress imports */
 	link?: string | { href: string; blank?: boolean };
+	/** Image shown instead of this one in a dark color scheme */
+	darkVariant?: ImageDarkVariant;
+}
+
+interface ImageDarkVariant {
+	asset: { _ref: string; url?: string; provider?: string };
+	width?: number;
+	height?: number;
+	blurhash?: string;
+	dominantColor?: string;
 }
 
 interface PortableTextCodeBlock {
@@ -243,6 +253,56 @@ const attrNum = (v: unknown): number | undefined =>
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * The editor attribute for an image's stored `darkVariant`, or `null` when
+ * there is none. Accepts the MediaValue asset that seeded `$media` stores.
+ * Keep in sync with `imageDarkVariantToAttrs` in core's content converters.
+ */
+function imageDarkVariantToAttrs(value: unknown): Record<string, unknown> | null {
+	if (!isRecord(value) || !isRecord(value.asset)) return null;
+	const { asset, width, height } = resolveImageMedia(value);
+	const provider = canonicalMediaProviderId(asset.provider);
+	const src =
+		asset.url ??
+		(provider === "local" && asset._ref ? `/_emdash/api/media/file/${asset._ref}` : "");
+	if (!asset._ref && !src) return null;
+	const blurhash = attrStr(value.blurhash) ?? attrStr(value.asset.blurhash);
+	const dominantColor = attrStr(value.dominantColor) ?? attrStr(value.asset.dominantColor);
+	return {
+		src,
+		...(asset._ref ? { mediaId: asset._ref } : {}),
+		...(provider ? { provider } : {}),
+		...(attrNum(width) ? { width } : {}),
+		...(attrNum(height) ? { height } : {}),
+		...(blurhash ? { blurhash } : {}),
+		...(dominantColor ? { dominantColor } : {}),
+	};
+}
+
+/** The stored `darkVariant` for an editor attribute, or `undefined` when there is none. */
+function imageDarkVariantFromAttrs(value: unknown): ImageDarkVariant | undefined {
+	if (!isRecord(value)) return undefined;
+	const src = attrStr(value.src);
+	const mediaId = attrStr(value.mediaId);
+	if (!src && !mediaId) return undefined;
+	const provider = attrStr(value.provider);
+	const width = attrNum(value.width);
+	const height = attrNum(value.height);
+	const blurhash = attrStr(value.blurhash);
+	const dominantColor = attrStr(value.dominantColor);
+	return {
+		asset: {
+			_ref: mediaId ?? "",
+			...(src ? { url: src } : {}),
+			...(provider && provider !== "local" ? { provider } : {}),
+		},
+		...(width ? { width } : {}),
+		...(height ? { height } : {}),
+		...(blurhash ? { blurhash } : {}),
+		...(dominantColor ? { dominantColor } : {}),
+	};
 }
 
 function attrsWithPortableTextKey(
@@ -722,6 +782,7 @@ function convertPMNode(
 			const provider = attrStr(attrs.provider);
 			const blurhash = attrStr(attrs.blurhash);
 			const dominantColor = attrStr(attrs.dominantColor);
+			const darkVariant = imageDarkVariantFromAttrs(attrs.darkVariant);
 			const title = attrStr(attrs.title);
 			const caption = Object.hasOwn(attrs, "caption")
 				? (attrStr(attrs.caption) ?? (title ? "" : undefined))
@@ -762,6 +823,7 @@ function convertPMNode(
 				displayHeight: attrNum(attrs.displayHeight),
 				alignment: attrStr(attrs.alignment) as PortableTextImageBlock["alignment"],
 				link,
+				...(darkVariant ? { darkVariant } : {}),
 			};
 		}
 
@@ -1296,6 +1358,7 @@ function convertPTBlock(
 						displayHeight: imageBlock.displayHeight,
 						alignment: imageBlock.alignment,
 						link: normalizeImageLink(imageBlock.link),
+						darkVariant: imageDarkVariantToAttrs(imageBlock.darkVariant),
 					},
 					block._key,
 				),

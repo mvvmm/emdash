@@ -872,6 +872,64 @@ describe("$media seed resolution", () => {
 		]);
 	});
 
+	it("should resolve $media in an image block's dark variant to a media reference", async () => {
+		const registry = new SchemaRegistry(db);
+		await registry.createField("posts", {
+			slug: "body",
+			label: "Body",
+			type: "portableText",
+			options: { darkVariant: true },
+		});
+
+		mockFetch
+			.mockResolvedValueOnce(createMockResponse(MOCK_PNG, "image/png"))
+			.mockResolvedValueOnce(createMockResponse(MOCK_JPEG, "image/jpeg"));
+
+		const seed: SeedFile = {
+			version: "1",
+			content: {
+				posts: [
+					{
+						id: "post-1",
+						slug: "hello",
+						data: {
+							title: "Hello",
+							body: [
+								{
+									_type: "image",
+									_key: "img1",
+									asset: { $media: { url: "https://example.com/light.png", alt: "Diagram" } },
+									darkVariant: {
+										asset: { $media: { url: "https://example.com/dark.jpg", alt: "" } },
+									},
+								},
+							],
+						},
+					},
+				],
+			},
+		};
+
+		await applySeed(db, seed, { includeContent: true, storage, baseUrl: "" });
+
+		const contentRepo = new ContentRepository(db);
+		const entry = await contentRepo.findBySlug("posts", "hello");
+		const media = await db.selectFrom("media").select(["id", "storage_key"]).execute();
+		const body = entry?.data.body as Array<Record<string, unknown>> | undefined;
+		const image = body?.[0];
+		const lightRef = (image?.asset as { _ref: string } | undefined)?._ref;
+		const darkMedia = media.find((row) => row.id !== lightRef);
+
+		expect(media).toHaveLength(2);
+		expect(image?.darkVariant).toMatchObject({
+			asset: {
+				_ref: darkMedia!.id,
+				url: `/_emdash/api/media/file/${darkMedia!.storage_key}`,
+				provider: "local",
+			},
+		});
+	});
+
 	it("should store an image block without $media as written", async () => {
 		const registry = new SchemaRegistry(db);
 		await registry.createField("posts", {

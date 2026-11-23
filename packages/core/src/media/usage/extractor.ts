@@ -214,6 +214,16 @@ function extractPortableTextOccurrences(
 				block.asset,
 				"image",
 			);
+			if (isRecord(block.darkVariant)) {
+				addPortableTextAssetOccurrence(
+					occurrences,
+					context,
+					fieldSlug,
+					`${pathPrefix}[${blockIndex}].darkVariant`,
+					block.darkVariant.asset,
+					"image",
+				);
+			}
 			continue;
 		}
 

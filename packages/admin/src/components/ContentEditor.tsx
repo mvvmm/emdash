@@ -3964,6 +3964,7 @@ function FieldRenderer({
 			);
 
 		case "portableText": {
+			const imageDarkVariant = !Array.isArray(field.options) && field.options?.darkVariant === true;
 			if (chrome) {
 				return (
 					<div
@@ -3983,6 +3984,7 @@ function FieldRenderer({
 							onBlockSidebarOpen={onBlockSidebarOpen}
 							onBlockSidebarClose={onBlockSidebarClose}
 							editable={!readOnly}
+							imageDarkVariant={imageDarkVariant}
 						/>
 					</div>
 				);
@@ -4014,6 +4016,7 @@ function FieldRenderer({
 						onBlockSidebarClose={onBlockSidebarClose}
 						editable={!readOnly}
 						collaboration={collaboration}
+						imageDarkVariant={imageDarkVariant}
 					/>
 				</div>
 			);

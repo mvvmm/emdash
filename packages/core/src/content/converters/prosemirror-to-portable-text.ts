@@ -11,6 +11,7 @@ import {
 } from "@emdash-cms/admin/portable-text-table";
 
 import { sanitizeGalleryImages } from "./gallery.js";
+import { imageDarkVariantFromAttrs } from "./image-dark-variant.js";
 import {
 	UnsupportedPortableTextMarksError,
 	assertProseMirrorMarksSupported,
@@ -426,6 +427,7 @@ function convertImage(node: ProseMirrorNode): PortableTextImageBlock {
 	const displayWidth = imageDimension(attrs?.displayWidth);
 	const displayHeight = imageDimension(attrs?.displayHeight);
 	const alignment = attrs?.alignment;
+	const darkVariant = imageDarkVariantFromAttrs(attrs?.darkVariant);
 
 	// Normalise link: drop entirely when href is missing or empty so half-populated
 	// { blank: true } objects don't round-trip.
@@ -467,6 +469,7 @@ function convertImage(node: ProseMirrorNode): PortableTextImageBlock {
 				? alignment
 				: undefined,
 		link,
+		...(darkVariant ? { darkVariant } : {}),
 	};
 }
 

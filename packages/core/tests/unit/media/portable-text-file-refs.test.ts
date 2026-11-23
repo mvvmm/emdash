@@ -18,6 +18,36 @@ const findIds = vi.fn(
 );
 
 describe("linkPortableTextFileUrls", () => {
+	it("links the dark variant of an image named by a library file URL", async () => {
+		const [body] = await linkPortableTextFileUrls(
+			[
+				[
+					{
+						_type: "image",
+						_key: "a",
+						asset: { _ref: "media-light", url: "/_emdash/api/media/file/light.png" },
+						alt: "Diagram",
+						darkVariant: { asset: { url: "/_emdash/api/media/file/01IMAGE.png" }, width: 10 },
+					},
+				],
+			],
+			findIds,
+		);
+
+		expect(body).toEqual([
+			{
+				_type: "image",
+				_key: "a",
+				asset: { _ref: "media-light", url: "/_emdash/api/media/file/light.png" },
+				alt: "Diagram",
+				darkVariant: {
+					asset: { _ref: "media-image", url: "/_emdash/api/media/file/01IMAGE.png" },
+					width: 10,
+				},
+			},
+		]);
+	});
+
 	it("links image, video, and gallery assets named by a library file URL", async () => {
 		const [body] = await linkPortableTextFileUrls(
 			[

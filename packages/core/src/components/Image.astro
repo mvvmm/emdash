@@ -9,11 +9,17 @@ import { Image as AstroImage, getImage } from "astro:assets";
 import type { ImageEmbed } from "../media/types.js";
 import { getMediaProvider } from "../media/provider-loader.js";
 import { buildRenderMediaUrl } from "../media/url.js";
-import { canOptimizeImage, toAbsoluteMediaUrl, responsiveWidths } from "../media/responsive.js";
+import {
+	canOptimizeImage,
+	toAbsoluteMediaUrl,
+	responsiveWidths,
+} from "../media/responsive.js";
 import { getPublicOrigin } from "../api/public-url.js";
 import { sanitizeHref } from "../utils/url.js";
 import { normalizeImageLink } from "../content/converters/image-link.js";
 import { resolveImageMedia } from "../content/converters/gallery.js";
+import { sanitizeImageDarkVariant } from "../content/converters/image-dark-variant.js";
+import type { PortableTextImageDarkVariant } from "../content/converters/types.js";
 
 export interface Props {
 	node: {
@@ -51,6 +57,8 @@ export interface Props {
 		 * written by WordPress/Gutenberg imports.
 		 */
 		link?: string | { href: string; blank?: boolean };
+		/** Image shown instead of this one in a dark color scheme. */
+		darkVariant?: PortableTextImageDarkVariant;
 	};
 	/** Render the LQIP placeholder as an inline background. Disable for strict CSP. */
 	placeholder?: boolean;
@@ -83,8 +91,6 @@ const { caption, title, displayWidth, displayHeight, alignment, link } = node;
 const { asset, alt = "", width, height } = resolveImageMedia(node);
 const dimension = (value: number | undefined) =>
 	typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
-const originalWidth = dimension(width);
-const originalHeight = dimension(height);
 const customWidth = dimension(displayWidth);
 const customHeight = dimension(displayHeight);
 
@@ -97,169 +103,218 @@ const linkBlank = !isSamePageAnchor && imageLink?.blank === true;
 const linkTarget = linkBlank ? "_blank" : undefined;
 const linkRel = linkBlank ? "noopener noreferrer" : undefined;
 
-// Calculate aspect ratio from original dimensions
-const aspectRatio = originalWidth && originalHeight ? originalWidth / originalHeight : undefined;
-
-// Calculate render dimensions
-let renderWidth: number | undefined;
-let renderHeight: number | undefined;
-
-if (customWidth && customHeight) {
-	renderWidth = customWidth;
-	renderHeight = customHeight;
-} else if (customWidth && aspectRatio) {
-	renderWidth = customWidth;
-	renderHeight = Math.round(customWidth / aspectRatio);
-} else if (customHeight && aspectRatio) {
-	renderWidth = Math.round(customHeight * aspectRatio);
-	renderHeight = customHeight;
-} else {
-	renderWidth = originalWidth;
-	renderHeight = originalHeight;
+interface ImageSource {
+	asset: { _ref: string; url?: string; provider?: string };
+	width?: number;
+	height?: number;
+	blurhash?: string;
+	dominantColor?: string;
 }
 
-// Get the image source URL and srcset
-let src = "";
-let srcset: string | undefined;
-let sizes: string | undefined;
-let astroImageSrc = "";
-const providerId = asset.provider;
+interface ResolvedImage {
+	src: string;
+	srcset?: string;
+	sizes?: string;
+	astroImageSrc: string;
+	renderWidth?: number;
+	renderHeight?: number;
+	placeholderStyle: string;
+}
 
-if (providerId && providerId !== "local") {
-	// External provider
-	const provider = await getMediaProvider(providerId);
-	if (provider) {
-		try {
-			const mediaValue = {
-				provider: providerId,
-				id: asset._ref,
-				width: renderWidth,
-				height: renderHeight,
-				alt,
-			};
-			const result = provider.getEmbed(mediaValue, {
-				width: renderWidth,
-				height: renderHeight,
-			});
-			const embed = result instanceof Promise ? await result : result;
-			if (embed.type === "image") {
-				src = embed.src;
+/**
+ * Resolve the source URL, srcset, render size, and LQIP style for one image.
+ * The node's display size applies to every image it shows.
+ */
+async function resolveImage(image: ImageSource): Promise<ResolvedImage> {
+	const originalWidth = dimension(image.width);
+	const originalHeight = dimension(image.height);
 
-				// Generate srcset if provider supports dynamic sizing
-				if (embed.getSrc) {
-					const maxWidth = renderWidth || 1200;
-					const ar = renderWidth && renderHeight ? renderWidth / renderHeight : aspectRatio;
-					srcset = generateSrcset(embed.getSrc, maxWidth, ar, originalWidth);
-					sizes = renderWidth
-						? `(min-width: ${renderWidth}px) ${renderWidth}px, 100vw`
-						: "100vw";
+	// Calculate aspect ratio from original dimensions
+	const aspectRatio = originalWidth && originalHeight ? originalWidth / originalHeight : undefined;
+
+	// Calculate render dimensions
+	let renderWidth: number | undefined;
+	let renderHeight: number | undefined;
+
+	if (customWidth && customHeight) {
+		renderWidth = customWidth;
+		renderHeight = customHeight;
+	} else if (customWidth && aspectRatio) {
+		renderWidth = customWidth;
+		renderHeight = Math.round(customWidth / aspectRatio);
+	} else if (customHeight && aspectRatio) {
+		renderWidth = Math.round(customHeight * aspectRatio);
+		renderHeight = customHeight;
+	} else {
+		renderWidth = originalWidth;
+		renderHeight = originalHeight;
+	}
+
+	// Get the image source URL and srcset
+	let src = "";
+	let srcset: string | undefined;
+	let sizes: string | undefined;
+	let astroImageSrc = "";
+	const providerId = image.asset.provider;
+
+	if (providerId && providerId !== "local") {
+		// External provider
+		const provider = await getMediaProvider(providerId);
+		if (provider) {
+			try {
+				const mediaValue = {
+					provider: providerId,
+					id: image.asset._ref,
+					width: renderWidth,
+					height: renderHeight,
+					alt,
+				};
+				const result = provider.getEmbed(mediaValue, {
+					width: renderWidth,
+					height: renderHeight,
+				});
+				const embed = result instanceof Promise ? await result : result;
+				if (embed.type === "image") {
+					src = embed.src;
+
+					// Generate srcset if provider supports dynamic sizing
+					if (embed.getSrc) {
+						const maxWidth = renderWidth || 1200;
+						const ar = renderWidth && renderHeight ? renderWidth / renderHeight : aspectRatio;
+						srcset = generateSrcset(embed.getSrc, maxWidth, ar, originalWidth);
+						sizes = renderWidth
+							? `(min-width: ${renderWidth}px) ${renderWidth}px, 100vw`
+							: "100vw";
+					}
 				}
+			} catch (error) {
+				console.warn(`Failed to get embed for image ${image.asset._ref}:`, error);
 			}
-		} catch (error) {
-			console.warn(`Failed to get embed for image ${asset._ref}:`, error);
 		}
 	}
-}
 
-// Fallback for local provider. `asset.url` carries the storage key with
-// extension when present; `asset._ref` is a bare ULID that only the internal
-// `/file/{id}` route can resolve. `buildRenderMediaUrl` picks the right shape.
-if (!src) {
-	src = buildRenderMediaUrl(Astro.locals.emdash?.getPublicMediaUrl, {
-		url: asset.url,
-		id: asset._ref,
-	});
-	if (renderWidth && renderHeight) {
-		const absoluteSrc = toAbsoluteMediaUrl(
-			src,
-			getPublicOrigin(Astro.url, Astro.locals.emdash?.config),
-		);
-		if (
-			await canOptimizeImage(getImage, {
-				src: absoluteSrc,
-				width: renderWidth,
-				height: renderHeight,
-			})
-		) {
-			astroImageSrc = absoluteSrc;
+	// Fallback for local provider. `asset.url` carries the storage key with
+	// extension when present; `asset._ref` is a bare ULID that only the internal
+	// `/file/{id}` route can resolve. `buildRenderMediaUrl` picks the right shape.
+	if (!src) {
+		src = buildRenderMediaUrl(Astro.locals.emdash?.getPublicMediaUrl, {
+			url: image.asset.url,
+			id: image.asset._ref,
+		});
+		if (renderWidth && renderHeight) {
+			const absoluteSrc = toAbsoluteMediaUrl(
+				src,
+				getPublicOrigin(Astro.url, Astro.locals.emdash?.config),
+			);
+			if (
+				await canOptimizeImage(getImage, {
+					src: absoluteSrc,
+					width: renderWidth,
+					height: renderHeight,
+				})
+			) {
+				astroImageSrc = absoluteSrc;
+			}
 		}
 	}
+
+	let placeholderStyle = "";
+	if (placeholder && image.blurhash) {
+		const { blurhashToImageCssString } = await import("@unpic/placeholder");
+		placeholderStyle = blurhashToImageCssString(image.blurhash);
+	} else if (placeholder && image.dominantColor) {
+		placeholderStyle = `background-color: ${image.dominantColor};`;
+	}
+
+	return { src, srcset, sizes, astroImageSrc, renderWidth, renderHeight, placeholderStyle };
 }
 
-// Build placeholder background style. Prefer first-class LQIP fields; fall
-// back to `asset.meta` for legacy snapshots persisted before LQIP was promoted.
-const blurhash = (node.blurhash ?? (node.asset.meta?.blurhash as string | undefined)) as
-	| string
-	| undefined;
-const dominantColor = (node.dominantColor ??
-	(node.asset.meta?.dominantColor as string | undefined)) as string | undefined;
+// Prefer first-class LQIP fields; fall back to `asset.meta` for legacy
+// snapshots persisted before LQIP was promoted.
+const resolved = await resolveImage({
+	asset,
+	width,
+	height,
+	blurhash: node.blurhash ?? (node.asset.meta?.blurhash as string | undefined),
+	dominantColor: node.dominantColor ?? (node.asset.meta?.dominantColor as string | undefined),
+});
+const darkVariant = sanitizeImageDarkVariant(node.darkVariant);
+const resolvedDark = darkVariant
+	? await resolveImage(darkVariant)
+	: null;
 
-let placeholderStyle = "";
-if (placeholder && blurhash) {
-	const { blurhashToImageCssString } = await import("@unpic/placeholder");
-	placeholderStyle = blurhashToImageCssString(blurhash);
-} else if (placeholder && dominantColor) {
-	placeholderStyle = `background-color: ${dominantColor};`;
-}
-
+const variants = [
+	{ image: resolved, class: resolvedDark ? "emdash-image--light" : undefined },
+	...(resolvedDark ? [{ image: resolvedDark, class: "emdash-image--dark" }] : []),
+];
 ---
 
 <figure class:list={["emdash-image", alignment && `emdash-image--align-${alignment}`]}>
 	{
 		linkHref ? (
 			<a href={linkHref} target={linkTarget} rel={linkRel}>
-				{astroImageSrc ? (
+				{variants.map((variant) =>
+					variant.image.astroImageSrc ? (
+						<AstroImage
+							src={variant.image.astroImageSrc}
+							alt={alt}
+							title={title}
+							width={variant.image.renderWidth}
+							height={variant.image.renderHeight}
+							layout="constrained"
+							loading="lazy"
+							decoding="async"
+							class={variant.class}
+							style={variant.image.placeholderStyle || undefined}
+						/>
+					) : (
+						<img
+							src={variant.image.src}
+							srcset={variant.image.srcset}
+							sizes={variant.image.sizes}
+							alt={alt}
+							title={title}
+							width={variant.image.renderWidth}
+							height={variant.image.renderHeight}
+							loading="lazy"
+							decoding="async"
+							class={variant.class}
+							style={variant.image.placeholderStyle || undefined}
+						/>
+					),
+				)}
+			</a>
+		) : (
+			variants.map((variant) =>
+				variant.image.astroImageSrc ? (
 					<AstroImage
-						src={astroImageSrc}
+						src={variant.image.astroImageSrc}
 						alt={alt}
 						title={title}
-						width={renderWidth}
-						height={renderHeight}
+						width={variant.image.renderWidth}
+						height={variant.image.renderHeight}
 						layout="constrained"
 						loading="lazy"
 						decoding="async"
-						style={placeholderStyle || undefined}
+						class={variant.class}
+						style={variant.image.placeholderStyle || undefined}
 					/>
 				) : (
 					<img
-						src={src}
-						srcset={srcset}
-						sizes={sizes}
+						src={variant.image.src}
+						srcset={variant.image.srcset}
+						sizes={variant.image.sizes}
 						alt={alt}
 						title={title}
-						width={renderWidth}
-						height={renderHeight}
+						width={variant.image.renderWidth}
+						height={variant.image.renderHeight}
 						loading="lazy"
 						decoding="async"
-						style={placeholderStyle || undefined}
+						class={variant.class}
+						style={variant.image.placeholderStyle || undefined}
 					/>
-				)}
-			</a>
-		) : astroImageSrc ? (
-			<AstroImage
-				src={astroImageSrc}
-				alt={alt}
-				title={title}
-				width={renderWidth}
-				height={renderHeight}
-				layout="constrained"
-				loading="lazy"
-				decoding="async"
-				style={placeholderStyle || undefined}
-			/>
-		) : (
-			<img
-				src={src}
-				srcset={srcset}
-				sizes={sizes}
-				alt={alt}
-				title={title}
-				width={renderWidth}
-				height={renderHeight}
-				loading="lazy"
-				decoding="async"
-				style={placeholderStyle || undefined}
-			/>
+				),
+			)
 		)
 	}
 	{caption && <figcaption>{caption}</figcaption>}
@@ -309,6 +364,26 @@ if (placeholder && blurhash) {
 			width: 100%;
 			max-width: 100%;
 			margin-inline: 0;
+		}
+	}
+</style>
+
+<style is:global>
+	/* Same rules as EmDashImage, which a page with only Portable Text images never loads. */
+	:where(:root.dark) .emdash-image--light {
+		display: none;
+	}
+	:where(:root.light) .emdash-image--dark {
+		display: none;
+	}
+	@media (prefers-color-scheme: dark) {
+		:where(:root:not(.light)) .emdash-image--light {
+			display: none;
+		}
+	}
+	@media (prefers-color-scheme: light) {
+		:where(:root:not(.dark)) .emdash-image--dark {
+			display: none;
 		}
 	}
 </style>

@@ -90,6 +90,25 @@ export interface PortableTextImageBlock {
 	 * carries it. Read the field through `normalizeImageLink()`.
 	 */
 	link?: string | PortableTextImageLink;
+	/** Image shown instead of this one in a dark color scheme. */
+	darkVariant?: PortableTextImageDarkVariant;
+}
+
+/**
+ * Dark color scheme counterpart of a Portable Text image. Alt text, caption,
+ * link, alignment, and display size come from the image that carries it.
+ */
+export interface PortableTextImageDarkVariant {
+	asset: {
+		_ref: string;
+		url?: string;
+		/** Provider ID for external media (e.g., "cloudflare-images") */
+		provider?: string;
+	};
+	width?: number;
+	height?: number;
+	blurhash?: string;
+	dominantColor?: string;
 }
 
 /**

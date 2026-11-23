@@ -985,7 +985,7 @@ export function FieldEditor({
 			validation: Object.keys(validation).length > 0 ? validation : null,
 		};
 
-		if (selectedType === "image") {
+		if (selectedType === "image" || selectedType === "portableText") {
 			const widgetOptions: Record<string, unknown> = { ...field?.options };
 			delete widgetOptions.darkVariant;
 			if (formState.darkVariant) widgetOptions.darkVariant = true;
@@ -1787,13 +1787,17 @@ export function FieldEditor({
 								/>
 							)}
 
-							{selectedType === "image" && (
+							{(selectedType === "image" || selectedType === "portableText") && (
 								<Switch
 									checked={formState.darkVariant}
 									onCheckedChange={(checked) => setField("darkVariant", checked)}
 									label={
 										<HelpLabel
-											help={t`Editors can select a second image that the site shows in dark mode.`}
+											help={
+												selectedType === "image"
+													? t`Editors can select a second image that the site shows in dark mode.`
+													: t`Editors can select a second image for each image in the text, which the site shows in dark mode.`
+											}
 										>
 											{t`Dark mode variant`}
 										</HelpLabel>

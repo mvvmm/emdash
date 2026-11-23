@@ -129,6 +129,7 @@ export type {
 	PortableTextLinkMark,
 	PortableTextTextBlock,
 	PortableTextImageBlock,
+	PortableTextImageDarkVariant,
 	PortableTextCodeBlock,
 	PortableTextHtmlBlock,
 	PortableTextIframeBlock,

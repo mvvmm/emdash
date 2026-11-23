@@ -4,9 +4,9 @@ import { storageKeyFromLocalMediaFileUrl } from "./url.js";
 type FindMediaIdsByStorageKeys = (storageKeys: string[]) => Promise<Map<string, string>>;
 
 /**
- * Give each Portable Text image, video, and gallery image that names a local
- * file only by its URL (as Markdown images do) the id of that file's media
- * item in `asset._ref`. The URL stays in `asset.url`. Values without such
+ * Give each Portable Text image, image dark variant, video, and gallery image
+ * that names a local file only by its URL (as Markdown images do) the id of
+ * that file's media item in `asset._ref`. The URL stays in `asset.url`. Values without such
  * assets are returned as they are, without a lookup.
  */
 export async function linkPortableTextFileUrls(
@@ -46,7 +46,10 @@ function unlinkedFileAssets(value: unknown): UnlinkedFileAsset[] {
 
 function blockAssets(block: unknown): unknown[] {
 	if (!isRecord(block)) return [];
-	if (block._type === "image" || isPortableTextVideoBlock(block)) return [block.asset];
+	if (block._type === "image") {
+		return isRecord(block.darkVariant) ? [block.asset, block.darkVariant.asset] : [block.asset];
+	}
+	if (isPortableTextVideoBlock(block)) return [block.asset];
 	if (block._type === "gallery" && Array.isArray(block.images)) {
 		return block.images.map((image: unknown) => (isRecord(image) ? image.asset : undefined));
 	}
@@ -87,9 +90,17 @@ function replaceAssets(
 				}),
 			};
 		}
-		if (!isRecord(block.asset)) return block;
-		const asset = linked.get(block.asset);
-		return asset ? { ...block, asset } : block;
+		const asset = isRecord(block.asset) ? linked.get(block.asset) : undefined;
+		const darkVariant =
+			block._type === "image" && isRecord(block.darkVariant) ? block.darkVariant : undefined;
+		const darkAsset =
+			darkVariant && isRecord(darkVariant.asset) ? linked.get(darkVariant.asset) : undefined;
+		if (!asset && !darkAsset) return block;
+		return {
+			...block,
+			...(asset ? { asset } : {}),
+			...(darkVariant && darkAsset ? { darkVariant: { ...darkVariant, asset: darkAsset } } : {}),
+		};
 	});
 }
 

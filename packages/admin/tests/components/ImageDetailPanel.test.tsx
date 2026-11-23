@@ -944,3 +944,92 @@ describe("ImageDetailPanel edits", () => {
 		);
 	});
 });
+
+describe("ImageDetailPanel dark variant", () => {
+	const darkVariant = {
+		src: "/_emdash/api/media/file/dark.png",
+		mediaId: "dark-image",
+		provider: "local",
+	};
+
+	it("offers no dark slot when the field does not opt in", async () => {
+		const { screen } = await renderPanel({ ...baseAttributes, darkVariant });
+
+		await expect.element(screen.getByRole("button", { name: "Apply" })).toBeVisible();
+		expect(screen.getByRole("button", { name: "Add dark mode variant" }).query()).toBeNull();
+		expect(screen.getByRole("button", { name: "Remove dark mode variant" }).query()).toBeNull();
+	});
+
+	it("applies a picked variant at once and keeps the panel open", async () => {
+		const { screen, onUpdate, onClose } = await renderPanel({
+			...baseAttributes,
+			offerDarkVariant: true,
+		});
+
+		await screen.getByRole("button", { name: "Add dark mode variant" }).click();
+		await screen.getByRole("button", { name: "Choose local image" }).click();
+
+		expect(onUpdate).toHaveBeenCalledWith({
+			darkVariant: expect.objectContaining({
+				src: "/_emdash/api/media/file/local.jpg",
+				mediaId: "local-image",
+				provider: "local",
+			}),
+		});
+		expect(onClose).not.toHaveBeenCalled();
+		await expect
+			.element(screen.getByRole("button", { name: "Remove dark mode variant" }))
+			.toBeVisible();
+	});
+
+	it("replaces the variant with the picked image", async () => {
+		const { screen, onUpdate } = await renderPanel({
+			...baseAttributes,
+			darkVariant,
+			offerDarkVariant: true,
+		});
+
+		await screen.getByRole("button", { name: "Replace dark mode image" }).click();
+		await screen.getByRole("button", { name: "Choose provider image" }).click();
+
+		expect(onUpdate).toHaveBeenCalledWith({
+			darkVariant: expect.objectContaining({
+				mediaId: "provider-image",
+				provider: "cloudflare-images",
+			}),
+		});
+	});
+
+	it("removes only the variant", async () => {
+		const { screen, onUpdate, onDelete } = await renderPanel({
+			...baseAttributes,
+			darkVariant,
+			offerDarkVariant: true,
+		});
+
+		await screen.getByRole("button", { name: "Remove dark mode variant" }).click();
+
+		expect(onUpdate).toHaveBeenCalledWith({ darkVariant: null });
+		expect(onDelete).not.toHaveBeenCalled();
+		await expect
+			.element(screen.getByRole("button", { name: "Add dark mode variant" }))
+			.toBeVisible();
+	});
+
+	it("keeps the variant when the primary image is replaced or settings are applied", async () => {
+		const { screen, onReplace, onUpdate } = await renderPanel({
+			...baseAttributes,
+			darkVariant,
+			offerDarkVariant: true,
+		});
+
+		await screen.getByRole("textbox", { name: "Alt text" }).fill("New description");
+		await screen.getByRole("button", { name: "Apply" }).click();
+		expect(onUpdate.mock.calls[0]![0]).not.toHaveProperty("darkVariant");
+
+		await screen.getByRole("button", { name: "Replace", exact: true }).click();
+		await screen.getByRole("button", { name: "Choose local image" }).click();
+		expect(onReplace).toHaveBeenCalledWith(expect.objectContaining({ mediaId: "local-image" }));
+		expect(onReplace.mock.calls[0]![0]).not.toHaveProperty("darkVariant");
+	});
+});

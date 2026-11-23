@@ -23,6 +23,7 @@ import { ulid } from "ulidx";
 import { setReferenceSelection } from "../api/handlers/relations.js";
 import { bindReferenceField, createFieldRelation } from "../api/handlers/schema.js";
 import { sanitizeGalleryImages } from "../content/converters/gallery.js";
+import { sanitizeImageDarkVariant } from "../content/converters/image-dark-variant.js";
 import type { DatetimeContextCache } from "../database/content-datetime.js";
 import { executeAtomicBatchIfSupported, isPostgres } from "../database/dialect-helpers.js";
 import { BylineRepository } from "../database/repositories/byline.js";
@@ -2362,6 +2363,18 @@ async function resolveValue(
 			// Merged over the block because the gallery image shape drops image-block fields such as `alignment`.
 			const [image] = sanitizeGalleryImages([resolved], ulid);
 			if (image) Object.assign(resolved, image);
+		}
+		if (
+			resolved._type === "image" &&
+			"darkVariant" in value &&
+			typeof value.darkVariant === "object" &&
+			value.darkVariant !== null &&
+			"asset" in value.darkVariant &&
+			isSeedMediaReference(value.darkVariant.asset)
+		) {
+			const darkVariant = sanitizeImageDarkVariant(resolved.darkVariant);
+			if (darkVariant) resolved.darkVariant = darkVariant;
+			else delete resolved.darkVariant;
 		}
 		return resolved;
 	}

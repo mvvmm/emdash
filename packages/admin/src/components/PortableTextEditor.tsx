@@ -2152,6 +2152,8 @@ export interface PortableTextEditorProps {
 	 * never called, and undo is the room's own, limited to this editor's edits.
 	 */
 	collaboration?: RichTextBinding;
+	/** Offer a dark mode variant slot in the settings of each image */
+	imageDarkVariant?: boolean;
 }
 
 // For external providers, src is only used for admin preview; the frontend Image
@@ -2226,6 +2228,7 @@ export function PortableTextEditor({
 	variant = "boxed",
 	onArrowUpAtStart,
 	collaboration: collaborationProp,
+	imageDarkVariant = false,
 }: PortableTextEditorProps) {
 	const { t } = useLingui();
 	const [collaboration] = React.useState(collaborationProp);
@@ -3067,6 +3070,12 @@ export function PortableTextEditor({
 			}
 		};
 	}, [editor]);
+
+	React.useEffect(() => {
+		if (!editor) return;
+		const editorStorage = editor.storage as unknown as Record<string, Record<string, unknown>>;
+		if (editorStorage.image) editorStorage.image.offerDarkVariant = imageDarkVariant;
+	}, [editor, imageDarkVariant]);
 
 	// A picker can stay open while an upload lands, so the insert position follows the document.
 	React.useEffect(() => {

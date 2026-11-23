@@ -25,6 +25,8 @@ import {
 	PencilSimple,
 	LinkSimple,
 	LinkBreak,
+	ImageBroken,
+	Moon,
 } from "@phosphor-icons/react";
 import * as React from "react";
 
@@ -63,11 +65,26 @@ export interface ImageAttributes {
 		href: string;
 		blank?: boolean;
 	} | null;
+	/** Image the site shows instead of this one in a dark color scheme. */
+	darkVariant?: ImageDarkVariantAttributes | null;
+}
+
+/** The dark mode image's own media; every other setting comes from the image that carries it. */
+export interface ImageDarkVariantAttributes {
+	src: string;
+	mediaId?: string;
+	provider?: string;
+	width?: number;
+	height?: number;
+	blurhash?: string;
+	dominantColor?: string;
 }
 
 export interface ImagePanelAttributes extends ImageAttributes {
 	/** Transient identity for the image node that opened the sidebar. */
 	nodeKey?: object;
+	/** Offer a slot for a dark mode variant of the image. */
+	offerDarkVariant?: boolean;
 }
 
 export interface ImageDetailPanelProps {
@@ -112,6 +129,9 @@ export function ImageDetailPanel({
 	const [linkHref, setLinkHref] = React.useState(attributes.link?.href ?? "");
 	const [linkBlank, setLinkBlank] = React.useState(Boolean(attributes.link?.blank));
 	const [showMediaPicker, setShowMediaPicker] = React.useState(false);
+	const [showDarkPicker, setShowDarkPicker] = React.useState(false);
+	const [darkVariant, setDarkVariant] = React.useState(attributes.darkVariant ?? null);
+	const [darkImageBroken, setDarkImageBroken] = React.useState(false);
 	const [asset, setAsset] = React.useState(attributes);
 	const handleAssetItemChanged = React.useCallback(
 		(item: MediaItem) => {
@@ -160,6 +180,7 @@ export function ImageDetailPanel({
 		setCaption(attributes.caption ?? "");
 		setTitle(attributes.title ?? "");
 		setAsset(attributes);
+		setDarkVariant(attributes.darkVariant ?? null);
 		setHasCustomSize(
 			imageDimension(attributes.displayWidth) != null ||
 				imageDimension(attributes.displayHeight) != null,
@@ -223,6 +244,30 @@ export function ImageDetailPanel({
 		});
 		setShowMediaPicker(false);
 		onClose();
+	};
+
+	React.useEffect(() => {
+		setDarkImageBroken(false);
+	}, [darkVariant?.src]);
+
+	const handleDarkVariantSelect = (item: MediaItem) => {
+		const next: ImageDarkVariantAttributes = {
+			src: item.url,
+			mediaId: item.id || undefined,
+			provider: canonicalMediaProviderId(item.provider),
+			width: item.width,
+			height: item.height,
+			blurhash: item.blurhash ?? metaString(item.meta, "blurhash"),
+			dominantColor: item.dominantColor ?? metaString(item.meta, "dominantColor"),
+		};
+		setDarkVariant(next);
+		onUpdate({ darkVariant: next });
+		setShowDarkPicker(false);
+	};
+
+	const handleRemoveDarkVariant = () => {
+		setDarkVariant(null);
+		onUpdate({ darkVariant: null });
 	};
 
 	// Track if form has unsaved changes
@@ -312,6 +357,64 @@ export function ImageDetailPanel({
 		</div>
 	);
 
+	const darkVariantSlot = attributes.offerDarkVariant ? (
+		<div className="mt-3 flex flex-wrap items-center gap-3">
+			{darkVariant ? (
+				<>
+					<div className="emdash-media-transparency-grid h-12 w-16 shrink-0 overflow-hidden rounded ring ring-kumo-line">
+						{darkImageBroken || !darkVariant.src ? (
+							<div className="flex h-full items-center justify-center text-kumo-subtle">
+								<ImageBroken className="h-5 w-5" aria-hidden="true" />
+							</div>
+						) : (
+							<img
+								src={darkVariant.src}
+								alt=""
+								className="h-full w-full object-contain"
+								onError={() => setDarkImageBroken(true)}
+							/>
+						)}
+					</div>
+					<Text as="p" size="sm" DANGEROUS_className="min-w-0 flex-1">
+						{t`Dark mode variant`}
+					</Text>
+					<div className="flex basis-full flex-wrap items-center gap-2">
+						<Button
+							variant="secondary"
+							size="sm"
+							icon={<ImageSquare aria-hidden="true" />}
+							onClick={() => setShowDarkPicker(true)}
+							disabled={assetEditor.isActive}
+							aria-label={t`Replace dark mode image`}
+						>
+							{t`Replace`}
+						</Button>
+						<Button
+							variant="secondary-destructive"
+							size="sm"
+							icon={<X aria-hidden="true" />}
+							onClick={handleRemoveDarkVariant}
+							disabled={assetEditor.isActive}
+							aria-label={t`Remove dark mode variant`}
+						>
+							{t`Remove`}
+						</Button>
+					</div>
+				</>
+			) : (
+				<Button
+					variant="secondary"
+					size="sm"
+					icon={<Moon aria-hidden="true" />}
+					onClick={() => setShowDarkPicker(true)}
+					disabled={assetEditor.isActive}
+				>
+					{t`Add dark mode variant`}
+				</Button>
+			)}
+		</div>
+	) : null;
+
 	const handleDelete = () => {
 		setShowDeleteConfirm(true);
 	};
@@ -323,7 +426,7 @@ export function ImageDetailPanel({
 	React.useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
 			const saveShortcut = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s";
-			if (showDeleteConfirm || showMediaPicker || assetEditor.isActive) {
+			if (showDeleteConfirm || showMediaPicker || showDarkPicker || assetEditor.isActive) {
 				if (saveShortcut) e.preventDefault();
 				return;
 			}
@@ -344,6 +447,7 @@ export function ImageDetailPanel({
 		inline,
 		showDeleteConfirm,
 		showMediaPicker,
+		showDarkPicker,
 		stableOnClose,
 		stableHandleSave,
 	]);
@@ -372,6 +476,14 @@ export function ImageDetailPanel({
 				mimeTypeFilter="image/"
 				title={t`Replace image`}
 				confirmLabel={t`Replace`}
+			/>
+			<MediaPickerModal
+				open={showDarkPicker}
+				onOpenChange={setShowDarkPicker}
+				onSelect={handleDarkVariantSelect}
+				mimeTypeFilter="image/"
+				title={darkVariant ? t`Replace dark mode variant` : t`Select dark mode variant`}
+				confirmLabel={darkVariant ? t`Replace` : undefined}
 			/>
 			{assetEditor.dialog}
 		</>
@@ -407,6 +519,7 @@ export function ImageDetailPanel({
 						/>
 					</div>
 					{imageActions}
+					{darkVariantSlot}
 					{assetEditor.error && (
 						<p role="alert" className="mt-2 text-xs leading-4 text-kumo-danger">
 							{assetEditor.error}
@@ -643,6 +756,7 @@ export function ImageDetailPanel({
 						/>
 					</div>
 					{imageActions}
+					{darkVariantSlot}
 					{assetEditor.error && (
 						<p role="alert" className="mt-2 text-xs leading-4 text-kumo-danger">
 							{assetEditor.error}

@@ -354,6 +354,20 @@ export const GalleryNode = Node.create({
 	},
 });
 
+function parseDarkVariantAttribute(value: string | null): Record<string, unknown> | null {
+	if (!value) return null;
+	try {
+		const parsed: unknown = JSON.parse(value);
+		return isPlainObject(parsed) ? parsed : null;
+	} catch {
+		return null;
+	}
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 export const ImageNode = Node.create({
 	name: "image",
 
@@ -419,6 +433,14 @@ export const ImageNode = Node.create({
 			},
 			link: {
 				default: null,
+			},
+			/** Image shown in a dark color scheme: `{ src, mediaId?, provider?, width?, height?, blurhash?, dominantColor? }` */
+			darkVariant: {
+				default: null,
+				parseHTML: (el: HTMLElement) =>
+					parseDarkVariantAttribute(el.getAttribute("data-dark-variant")),
+				renderHTML: (attrs: Record<string, unknown>) =>
+					attrs.darkVariant ? { "data-dark-variant": JSON.stringify(attrs.darkVariant) } : {},
 			},
 		};
 	},

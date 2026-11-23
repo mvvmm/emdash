@@ -308,6 +308,7 @@ export const InlineImageExtension = Image.extend({
 			dominantColor: { default: null },
 			alignment: { default: null, rendered: false },
 			link: { default: null, rendered: false },
+			darkVariant: { default: null, rendered: false },
 		};
 	},
 

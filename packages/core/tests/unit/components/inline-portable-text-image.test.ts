@@ -249,3 +249,37 @@ describe("Image media reference (inline editor seam)", () => {
 		]);
 	});
 });
+
+describe("Image dark variant (inline editor seam)", () => {
+	it("keeps a stored dark variant through PT → PM → PT", () => {
+		const darkVariant = {
+			asset: { _ref: "01DARK", url: "/_emdash/api/media/file/01DARK.png" },
+			width: 1200,
+			height: 800,
+			dominantColor: "#0d0d0d",
+		};
+		const pt = pmToPortableText(
+			portableTextToPM([
+				{
+					_type: "image",
+					_key: "img-dark",
+					asset: { _ref: "01LIGHT", url: "/_emdash/api/media/file/01LIGHT.png" },
+					alt: "Diagram",
+					darkVariant,
+				},
+			]),
+		);
+
+		expect(pt[0]).toMatchObject({ _type: "image", alt: "Diagram", darkVariant });
+	});
+
+	it("adds no dark variant to an image without one", () => {
+		const pt = pmToPortableText(
+			portableTextToPM([
+				{ _type: "image", _key: "img-light", asset: { _ref: "01LIGHT", url: "/light.png" } },
+			]),
+		);
+
+		expect(pt[0]).not.toHaveProperty("darkVariant");
+	});
+});

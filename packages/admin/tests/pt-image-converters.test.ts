@@ -54,4 +54,54 @@ describe("Image conversion (admin converters): PortableText ↔ ProseMirror", ()
 			},
 		]);
 	});
+
+	it("keeps a dark variant through PT → PM → PT", () => {
+		const darkVariant = {
+			asset: { _ref: "01DARK", url: "/_emdash/api/media/file/dark.png" },
+			width: 1600,
+			height: 900,
+			dominantColor: "#0d0d0d",
+		};
+		const [out] = _prosemirrorToPortableText(
+			_portableTextToProsemirror([
+				{
+					_type: "image",
+					_key: "img1",
+					asset: { _ref: "01LIGHT", url: "/_emdash/api/media/file/light.png" },
+					darkVariant,
+				},
+			]),
+		);
+
+		expect(out).toMatchObject({ _key: "img1", darkVariant });
+	});
+
+	it("reads a seeded $media asset on the dark variant", () => {
+		const [out] = _prosemirrorToPortableText(
+			_portableTextToProsemirror([
+				{
+					_type: "image",
+					_key: "img1",
+					asset: { _ref: "01LIGHT", url: "/_emdash/api/media/file/light.png" },
+					darkVariant: {
+						asset: { provider: "local", id: "01DARK", meta: { storageKey: "01DARKKEY.png" } },
+					},
+				},
+			]),
+		);
+
+		expect(out).toMatchObject({
+			darkVariant: { asset: { _ref: "01DARK", url: "/_emdash/api/media/file/01DARKKEY.png" } },
+		});
+	});
+
+	it("adds no dark variant to an image without one", () => {
+		const [out] = _prosemirrorToPortableText(
+			_portableTextToProsemirror([
+				{ _type: "image", _key: "img1", asset: { _ref: "01LIGHT", url: "/light.png" } },
+			]),
+		);
+
+		expect(out).not.toHaveProperty("darkVariant");
+	});
 });

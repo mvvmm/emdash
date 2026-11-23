@@ -418,6 +418,42 @@ describe("extractMediaUsageOccurrences", () => {
 		]);
 	});
 
+	it("extracts the dark variant of a Portable Text image", () => {
+		const occurrences = extractMediaUsageOccurrences({
+			fields: [field("body", "portableText")],
+			data: {
+				body: [
+					{
+						_type: "image",
+						_key: "img1",
+						asset: { _ref: "light-image" },
+						darkVariant: { asset: { _ref: "dark-image" } },
+					},
+					{
+						_type: "image",
+						_key: "img2",
+						asset: { _ref: "other-image" },
+						darkVariant: { asset: { url: "/_emdash/api/media/file/dark-file.png" } },
+					},
+				],
+			},
+		});
+
+		expect(
+			occurrences.map((occurrence) => [occurrence.fieldPath, occurrence.providerAssetId]),
+		).toEqual([
+			["body[0].asset._ref", "light-image"],
+			["body[0].darkVariant.asset._ref", "dark-image"],
+			["body[1].asset._ref", "other-image"],
+			["body[1].darkVariant.asset.url", "dark-file.png"],
+		]);
+		expect(occurrences[1]).toMatchObject({
+			referenceType: "portable_text_image",
+			mediaId: "dark-image",
+			mediaKind: "image",
+		});
+	});
+
 	it("extracts Portable Text video block asset refs", () => {
 		const occurrences = extractMediaUsageOccurrences({
 			fields: [field("body", "portableText")],
